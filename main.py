@@ -1,5 +1,5 @@
 import math
-import pytorch
+import torch
 import numpy
 def main():
     print("Test")
