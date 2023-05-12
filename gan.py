@@ -1,216 +1,270 @@
 import os
-from pytorch_lightning.utilities.types import TRAIN_DATALOADERS
-
+import sys
+import numpy as np
 import torch
-import torchvision
 import torch.nn as nn
+import torch.nn.parallel
+import torch.backends.cudnn as cudnn
 import torch.optim as optim
-import torch.nn.functional as F
-import torchvision.datasets as datasets
+import torch.utils.data
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split
-from torchvision.datasets import MNIST
-
+import torchvision.datasets as dset
+import torchvision.utils as vutils
 import matplotlib.pyplot as plt
-import pytorch_lightning as pl
 
-random_seed = 42
-torch.manual_seed(random_seed)
+if __name__ == "__main__":
+    CUDA = False
+    DATA_PATH = "./data"
+    BATCH_SIZE = 128
+    IMAGE_CHANNEL = 1
+    Z_DIM = 100
+    G_HIDDEN = 64
+    X_DIM = 64
+    D_HIDDEN = 64
+    EPOCH_NUM = 5
+    REAL_LABEL = 1
+    FAKE_LABEL = 0
+    lr = 2e-4
+    seed = 1
 
-BATCH_SIZE = 128
-AVAIL_GPUS = min(1, torch.cuda.device_count())
-NUM_WORKERS = int(os.cpu_count())
+    CUDA = CUDA and torch.cuda.is_available()
+    print("PyTorch version: {}".format(torch.__version__))
+    if CUDA:
+        print("CUDA version: {}\n".format(torch.version.cuda))
 
+    if CUDA:
+        torch.cuda.manual_seed(seed)
+    device = torch.device("cuda:0" if CUDA else "cpu")
+    cudnn.benchmark = True
 
-class MNISTDataModule(pl.LightningDataModule):
-    def __init__(
-        self, data_dir="./data", batch_size=BATCH_SIZE, num_workers=NUM_WORKERS
-    ):
-        super().__init__()
-        self.data_dir = data_dir
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-
-        self.transform = transforms.Compose(
+    # Data preprocessing
+    dataset = dset.MNIST(
+        root=DATA_PATH,
+        download=True,
+        transform=transforms.Compose(
             [
+                transforms.Resize(X_DIM),
                 transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
+                transforms.Normalize((0.5,), (0.5,)),
             ]
+        ),
+    )
+
+    # Dataloader
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2
+    )
+
+    # Plot training images
+    real_batch = next(iter(dataloader))
+    plt.figure(figsize=(8, 8))
+    plt.axis("off")
+    plt.title("Training Images")
+    plt.imshow(
+        np.transpose(
+            vutils.make_grid(
+                real_batch[0].to(device)[:64], padding=2, normalize=True
+            ).cpu(),
+            (1, 2, 0),
+        )
+    )
+
+
+# Weight initialization
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        m.weight.data.normal_(0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
+
+
+class Generator(nn.Module):
+    def __init__(self):
+        super(Generator, self).__init__()
+        self.main = nn.Sequential(
+            # input layer
+            nn.ConvTranspose2d(Z_DIM, G_HIDDEN * 8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(G_HIDDEN * 8),
+            nn.ReLU(True),
+            # 1st hidden layer
+            nn.ConvTranspose2d(G_HIDDEN * 8, G_HIDDEN * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(G_HIDDEN * 4),
+            nn.ReLU(True),
+            # 2nd hidden layer
+            nn.ConvTranspose2d(G_HIDDEN * 4, G_HIDDEN * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(G_HIDDEN * 2),
+            nn.ReLU(True),
+            # 3rd hidden layer
+            nn.ConvTranspose2d(G_HIDDEN * 2, G_HIDDEN, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(G_HIDDEN),
+            nn.ReLU(True),
+            # output layer
+            nn.ConvTranspose2d(G_HIDDEN, IMAGE_CHANNEL, 4, 2, 1, bias=False),
+            nn.Tanh(),
         )
 
-    def prepare_data(self):
-        MNIST(self.data_dir, train=True, download=True)
-        MNIST(self.data_dir, train=False, download=True)
-
-    def setup(self, stage=None):
-        # Assign train/val datasets
-        if stage == "fit" or stage is None:
-            mnist_full = MNIST(self.data_dir, train=True, transform=self.transform)
-            self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000])
-
-        # Assign test dataset
-        if stage == "test" or stage is None:
-            self.mnist_test = MNIST(
-                self.data_dir, train=False, transform=self.transform
-            )
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.mnist_train, batch_size=self.batch_size, num_workers=self.num_workers
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.mnist_val, batch_size=self.batch_size, num_workers=self.num_workers
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.mnist_test, batch_size=self.batch_size, num_workers=self.num_workers
-        )
+    def forward(self, input):
+        return self.main(input)
 
 
-# Discriminator: outputs fake or no fake i.e. [0, 1]
 class Discriminator(nn.Module):
     def __init__(self):
-        super().__init__()
-        # CNN - custom design possible
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 1)
+        super(Discriminator, self).__init__()
+        self.main = nn.Sequential(
+            # 1st layer
+            nn.Conv2d(IMAGE_CHANNEL, D_HIDDEN, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 2nd layer
+            nn.Conv2d(D_HIDDEN, D_HIDDEN * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(D_HIDDEN * 2),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 3rd layer
+            nn.Conv2d(D_HIDDEN * 2, D_HIDDEN * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(D_HIDDEN * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 4th layer
+            nn.Conv2d(D_HIDDEN * 4, D_HIDDEN * 8, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(D_HIDDEN * 8),
+            nn.LeakyReLU(0.2, inplace=True),
+            # output layer
+            nn.Conv2d(D_HIDDEN * 8, 1, 4, 1, 0, bias=False),
+            nn.Sigmoid(),
+        )
 
-    def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        # Flatten the tensor so it can be fed into fully connected layers
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
-        x = self.fc2(x)
-        return F.sigmoid(x)
-
-
-# Generator: outputs data [1, 28, 28] and values -1, 1
-class Generator(nn.Module):
-    def __init__(self, latent_dim):
-        super().__init__()
-        self.lin1 = nn.Linear(latent_dim, 7 * 7 * 64)  # [n, 256, 7, 7]
-        self.ct1 = nn.ConvTranspose2d(64, 32, 4, stride=2)  # [n, 64, 16, 16]
-        self.ct2 = nn.ConvTranspose2d(32, 16, 4, stride=2)  # [n, 16, 34, 34]
-        self.conv = nn.Conv2d(16, 1, kernel_size=7)  # [n, 1, 28, 28]
-
-    def forward(self, x):
-        # Pass latent space input into linear layer and reshape
-        x = self.lin1(x)
-        x = F.relu(x)
-        x = x.view(-1, 64, 7, 7)  # 257
-
-        # Upsample (transposed conv) 16x16 (64 feature maps)
-        x = self.ct1(x)
-        x = F.relu(x)
-
-        # Upsample to 34x34 (16 feature maps)
-        x = self.ct2(x)
-        x = F.relu(x)
-
-        # Convolution to 28x28 (1 feature map)
-        return self.conv(x)
-
-
-# GAN
-class GAN(pl.LightningModule):
-    def __init__(self, latent_dim=100, lr=0.0002):
-        super().__init__()
-        self.save_hyperparameters()
-
-        self.generator = Generator(latent_dim=self.hparams.latent_dim)
-        self.discriminator = Discriminator()
-        self.automatic_optimization = False
-
-        # random noise
-        self.validation_z = torch.randn(6, self.hparams.latent_dim)
-
-    def forward(self, z):
-        return self.generator(z)
-
-    def adversarial_loss(self, y_hat, y):
-        return F.binary_cross_entropy(y_hat, y)
-
-    def training_step(self, batch, batch_idx, optimizer_idx):
-        real_imgs, _ = batch
-
-        # sample noise
-        z = torch.randn(real_imgs.shape[0], self.hparams.latent_dim)
-        z = z.type_as(real_imgs)
-
-        # train generator: max log(D(G(z)))
-        if optimizer_idx == 0:
-            fake_imgs = self(z)
-            y_hat = self.discriminator(fake_imgs)
-
-            y = torch.ones(real_imgs.size(0), 1)
-            y = y.type_as(real_imgs)
-
-            g_loss = self.adversarial_loss(y_hat, y)
-
-            log_dict = {"g_loss": g_loss}
-            return {"loss": g_loss, "progress_bar": log_dict, "log": log_dict}
-
-        # train discriminator: max log(D(x)) + log(1 - D(G(z)))
-        if optimizer_idx == 1:
-            # how well can the discriminator label real imgages
-            y_hat_real = self.discriminator(real_imgs)
-
-            y_real = torch.ones(real_imgs.size(0), 1)
-            y_real = y_real.type_as(real_imgs)
-
-            real_loss = self.adversarial_loss(y_hat_real, y_real)
-
-            # how well can the discriminator label as fake
-            y_hat_fake = self.discriminator(self(z).detach())
-
-            y_fake = torch.zeros(real_imgs.size(0), 1)
-            y_fake = y_fake.type_as(real_imgs)
-
-            fake_loss = self.adversarial_loss(y_hat_fake, y_fake)
-
-            d_loss = (real_loss + fake_loss) / 2
-
-            log_dict = {"d_loss": d_loss}
-            return {"loss": d_loss, "progress_bar": log_dict, "log": log_dict}
-
-    def configure_optimizers(self):
-        lr = self.hparams.lr
-        opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr)
-        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr)
-        return [opt_g, opt_d], []
-
-    def plot_imgs(self):
-        z = self.validation_z.type_as(self.generator.lin1.weight)
-        sample_imgs = self(z).cpu()
-
-        print("epoch ", self.current_epoch)
-        fig = plt.figure()
-        for i in range(sample_imgs.size(0)):
-            plt.subplot(2, 3, i + 1)
-            plt.tight_layout()
-            plt.imshow(
-                sample_imgs.detach()[i, 0, :, :], cmap="gray_r", interpolation="none"
-            )
-            plt.title("Generated Data")
-            plt.xticks([])
-            plt.yticks([])
-            plt.axis("off")
-        plt.show()
-
-    def on_epoch_end(self):
-        self.plot_imgs()
+    def forward(self, input):
+        return self.main(input).view(-1, 1).squeeze(1)
 
 
 if __name__ == "__main__":
-    trainer = pl.Trainer(max_epochs=20)
-    dm = MNISTDataModule()
-    model = GAN()
-    trainer.fit(model, dm)
+    # Create the generator
+    netG = Generator().to(device)
+    netG.apply(weights_init)
+    print(netG)
+
+    # Create the discriminator
+    netD = Discriminator().to(device)
+    netD.apply(weights_init)
+    print(netD)
+
+    # Initialize BCELoss function
+    criterion = nn.BCELoss()
+
+    # Create batch of latent vectors that I will use to visualize the progression of the generator
+    viz_noise = torch.randn(BATCH_SIZE, Z_DIM, 1, 1, device=device)
+
+    # Setup Adam optimizers for both G and D
+    optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(0.5, 0.999))
+    optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(0.5, 0.999))
+
+    # Training Loop
+
+    # Lists to keep track of progress
+    img_list = []
+    G_losses = []
+    D_losses = []
+    iters = 0
+
+    print("Starting Training Loop...")
+    for epoch in range(EPOCH_NUM):
+        for i, data in enumerate(dataloader, 0):
+            # (1) Update the discriminator with real data
+            netD.zero_grad()
+            # Format batch
+            real_cpu = data[0].to(device)
+            b_size = real_cpu.size(0)
+            label = torch.full((b_size,), REAL_LABEL, dtype=torch.float, device=device)
+            # Forward pass real batch through D
+            output = netD(real_cpu).view(-1)
+            # Calculate loss on all-real batch
+            errD_real = criterion(output, label)
+            # Calculate gradients for D in backward pass
+            errD_real.backward()
+            D_x = output.mean().item()
+
+            # (2) Update the discriminator with fake data
+            # Generate batch of latent vectors
+            noise = torch.randn(b_size, Z_DIM, 1, 1, device=device)
+            # Generate fake image batch with G
+            fake = netG(noise)
+            label.fill_(FAKE_LABEL)
+            # Classify all fake batch with D
+            output = netD(fake.detach()).view(-1)
+            # Calculate D's loss on the all-fake batch
+            errD_fake = criterion(output, label)
+            # Calculate the gradients for this batch, accumulated (summed) with previous gradients
+            errD_fake.backward()
+            D_G_z1 = output.mean().item()
+            # Compute error of D as sum over the fake and the real batches
+            errD = errD_real + errD_fake
+            # Update D
+            optimizerD.step()
+
+            # (3) Update the generator with fake data
+            netG.zero_grad()
+            label.fill_(REAL_LABEL)  # fake labels are real for generator cost
+            # Since we just updated D, perform another forward pass of all-fake batch through D
+            output = netD(fake).view(-1)
+            # Calculate G's loss based on this output
+            errG = criterion(output, label)
+            # Calculate gradients for G
+            errG.backward()
+            D_G_z2 = output.mean().item()
+            # Update G
+            optimizerG.step()
+
+            # Output training stats
+            if i % 50 == 0:
+                print(
+                    "[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f"
+                    % (
+                        epoch,
+                        EPOCH_NUM,
+                        i,
+                        len(dataloader),
+                        errD.item(),
+                        errG.item(),
+                        D_x,
+                        D_G_z1,
+                        D_G_z2,
+                    )
+                )
+
+            # Save Losses for plotting later
+            G_losses.append(errG.item())
+            D_losses.append(errD.item())
+
+            # Check how the generator is doing by saving G's output on fixed_noise
+            if (iters % 500 == 0) or (
+                (epoch == EPOCH_NUM - 1) and (i == len(dataloader) - 1)
+            ):
+                with torch.no_grad():
+                    fake = netG(viz_noise).detach().cpu()
+                img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
+
+            iters += 1
+
+    # Grab a batch of real images from the dataloader
+    real_batch = next(iter(dataloader))
+
+    # Plot the real images
+    plt.figure(figsize=(15, 15))
+    plt.subplot(1, 2, 1)
+    plt.axis("off")
+    plt.title("Real Images")
+    plt.imshow(
+        np.transpose(
+            vutils.make_grid(
+                real_batch[0].to(device)[:64], padding=5, normalize=True
+            ).cpu(),
+            (1, 2, 0),
+        )
+    )
+
+    # Plot the fake images from the last epoch
+    plt.subplot(1, 2, 2)
+    plt.axis("off")
+    plt.title("Fake Images")
+    plt.imshow(np.transpose(img_list[-1], (1, 2, 0)))
+    plt.show()
