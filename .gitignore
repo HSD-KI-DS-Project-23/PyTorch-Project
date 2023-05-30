@@ -3,3 +3,4 @@
 basics/mnist_data/
 GAN/data/
 GAN/output/
+AutoEncoder/data/
