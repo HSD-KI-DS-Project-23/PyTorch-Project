@@ -5,3 +5,4 @@ GAN/data/
 GAN/output/
 AutoEncoder/data/
 AutoEncoder/output/
+AutoEncoder/eval/
