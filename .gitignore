@@ -3,6 +3,6 @@
 basics/mnist_data/
 GAN/data/
 GAN/output/
-AutoEncoder/data/
+AutoEncoder/quicksave/
 AutoEncoder/output/
 AutoEncoder/eval/
