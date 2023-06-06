@@ -5,3 +5,4 @@ GAN/data/
 GAN/output/
 AutoEncoder/quicksave/
 AutoEncoder/output/
+*.pyc
