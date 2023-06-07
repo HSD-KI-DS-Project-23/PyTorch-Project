@@ -1,6 +1,13 @@
 import os
 
 
-def generate_folder(folder_path):
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
+def generate_folder(folders):
+    """
+    Creates multiple folders based on the provided list.
+
+    Parameters:
+    folders (list): A list of folder names to be created.
+
+    """
+    for folder in folders:
+        os.makedirs(folder, exist_ok=True)
