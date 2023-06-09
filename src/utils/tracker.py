@@ -16,18 +16,15 @@ class Tracker:
 
         self.epochs_completed = 0
 
-    def plotLossGraph(self, current_epoch):
+    def plotLossGraph(self):
         self.fig = plt.figure()
         self.ax0 = self.fig.add_subplot(121, title="loss")
         self.ax1 = self.fig.add_subplot(122, title="top1err")
-        self.x_epoch.append(current_epoch)
         self.ax0.plot(self.x_epoch, self.y_loss["train"], "bo-", label="train")
         # self.ax0.plot(self.x_epoch, self.y_loss["val"], "ro-", label="val")
         # self.ax1.plot(self.x_epoch, self.y_err["train"], "bo-", label="train")
         # self.ax1.plot(self.x_epoch, self.y_err["val"], "ro-", label="val")
-        if current_epoch == 0:
-            self.ax0.legend()
-            self.ax1.legend()
+
         self.fig.savefig(os.path.join("./output", "train.jpg"))
 
     def save(self, file_path):
@@ -48,3 +45,4 @@ class Tracker:
         self.y_loss = data["y_loss"]
         self.y_err = data["y_err"]
         self.x_epoch = data["x_epoch"]
+        self.epochs_completed = data["x_epoch"][-1]
