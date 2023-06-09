@@ -13,8 +13,8 @@ class Tracker:
         self.y_err["val"] = []
 
         self.x_epoch = []
-
         self.epochs_completed = 0
+        self.learning_rate = []
 
     def plotLossGraph(self):
         self.fig = plt.figure()
@@ -29,7 +29,12 @@ class Tracker:
 
     def save(self, file_path):
         # create a dictionary to hold the variables
-        data = {"y_loss": self.y_loss, "y_err": self.y_err, "x_epoch": self.x_epoch}
+        data = {
+            "y_loss": self.y_loss,
+            "y_err": self.y_err,
+            "x_epoch": self.x_epoch,
+            "learning_rate": self.learning_rate,
+        }
 
         # save the data to a json file
         with open(file_path, "w") as file:
@@ -46,3 +51,5 @@ class Tracker:
         self.y_err = data["y_err"]
         self.x_epoch = data["x_epoch"]
         self.epochs_completed = data["x_epoch"][-1]
+        self.epoch_losses = data["epoch_losses"]
+        self.learning_rate = data["learning_rate"]
