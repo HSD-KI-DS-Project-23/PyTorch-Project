@@ -21,11 +21,14 @@ class Tracker:
         self.ax0 = self.fig.add_subplot(121, title="loss")
         self.ax1 = self.fig.add_subplot(122, title="top1err")
         self.ax0.plot(self.x_epoch, self.y_loss["train"], "bo-", label="train")
-        # self.ax0.plot(self.x_epoch, self.y_loss["val"], "ro-", label="val")
+        self.ax0.plot(self.x_epoch, self.y_loss["val"], "ro-", label="val")
+
         # self.ax1.plot(self.x_epoch, self.y_err["train"], "bo-", label="train")
         # self.ax1.plot(self.x_epoch, self.y_err["val"], "ro-", label="val")
 
         self.fig.savefig(os.path.join("./output", "train.jpg"))
+        plt.show()
+        plt.close()
 
     def save(self, file_path):
         # create a dictionary to hold the variables
@@ -51,5 +54,4 @@ class Tracker:
         self.y_err = data["y_err"]
         self.x_epoch = data["x_epoch"]
         self.epochs_completed = data["x_epoch"][-1]
-        self.epoch_losses = data["epoch_losses"]
         self.learning_rate = data["learning_rate"]
