@@ -5,9 +5,9 @@ import torchvision
 from torchvision import transforms, datasets
 
 
-class MNIST_De_Class(nn.Module):
-    def __init__(self):
-        super(MNIST_De_Class, self).__init__()
+class MNIST_Classification_Class(nn.Module):
+    def __init__(self, hidden_dim):
+        super(MNIST_Classification_Class, self).__init__()
         # self.input = nn.Linear(28 * 28, 20)  # input
         # self.hidden1 = nn.Linear(20, 20)  # hidden1
         # self.hidden2 = nn.Linear(20, 20)  # hidden2
