@@ -21,10 +21,8 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, d_input_dim, d_hidden_dim, data_dim):
+    def __init__(self, d_input_dim, d_hidden_dim):
         super(Discriminator, self).__init__()
-
-        self.data_dim = data_dim
 
         self.model = nn.Sequential(
             nn.Linear(d_input_dim, d_hidden_dim),
@@ -38,6 +36,4 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x):
-        x.view(-1, self.data_dim)
-        print(x.ndim)
         return self.model(x)
