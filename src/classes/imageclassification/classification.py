@@ -6,7 +6,7 @@ from torchvision import transforms, datasets
 
 
 class MNIST_Classification_Class(nn.Module):
-    def __init__(self, hidden_dim):
+    def __init__(self, input_size, hidden_dim):
         super(MNIST_Classification_Class, self).__init__()
         # self.input = nn.Linear(28 * 28, 20)  # input
         # self.hidden1 = nn.Linear(20, 20)  # hidden1
@@ -14,7 +14,7 @@ class MNIST_Classification_Class(nn.Module):
         # self.out = nn.Linear(20, 10)  # output
 
         self.network = nn.Sequential(
-            nn.Linear(9, hidden_dim),
+            nn.Linear(input_size, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
