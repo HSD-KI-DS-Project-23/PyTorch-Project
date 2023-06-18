@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class AutoEncoder(nn.Module):
+class AutoEncoderCNN(nn.Module):
     def __init__(self, dataset="MNIST", drop_prob=0.5):
         super().__init__()
 
