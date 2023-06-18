@@ -6,12 +6,14 @@ class AutoEncoder(nn.Module):
         super().__init__()
 
         if datasettype == "MNIST":
-            image_dim = 1 * 28 * 28
+            self.image_dim = 1 * 28 * 28
+            self.output_shape = (1, 28, 28)
         elif datasettype == "CIFAR10":
-            image_dim = 3 * 32 * 32
+            self.image_dim = 3 * 32 * 32
+            self.output_shape = (3, 32, 32)
 
         self.encoder = nn.Sequential(
-            nn.Linear(image_dim, 128),
+            nn.Linear(self.image_dim, 128),
             nn.ReLU(),
             nn.Linear(128, 64),
             nn.ReLU(),
@@ -32,11 +34,15 @@ class AutoEncoder(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 128),
             nn.ReLU(),
-            nn.Linear(128, image_dim),
+            nn.Linear(128, self.image_dim),
             nn.Sigmoid(),
         )
 
     def forward(self, x):
-        encoded = self.encoder(x)
+        flattened_x = x.view(x.size(0), -1)  # Flatten x
+        encoded = self.encoder(flattened_x)
         decoded = self.decoder(encoded)
+        decoded = decoded.view(
+            x.size(0), *self.output_shape
+        )  # Reshape the decoded tensor
         return decoded
