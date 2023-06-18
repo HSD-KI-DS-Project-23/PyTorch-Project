@@ -1,9 +1,14 @@
 import torch.nn as nn
 
 
-    def __init__(self):
 class AutoEncoder4x100(nn.Module):
+    def __init__(self, datasettype):
         super().__init__()
+
+        if datasettype == "MNIST":
+            image_dim = 1 * 28 * 28
+        elif datasettype == "CIFAR10":
+            image_dim = 3 * 32 * 32
 
         self.encoder = nn.Sequential(
             nn.Linear(28 * 28, 100),

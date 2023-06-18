@@ -2,11 +2,16 @@ import torch.nn as nn
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self):
+    def __init__(self, datasettype):
         super().__init__()
 
+        if datasettype == "MNIST":
+            image_dim = 1 * 28 * 28
+        elif datasettype == "CIFAR10":
+            image_dim = 3 * 32 * 32
+
         self.encoder = nn.Sequential(
-            nn.Linear(28 * 28, 128),
+            nn.Linear(image_dim, 128),
             nn.ReLU(),
             nn.Linear(128, 64),
             nn.ReLU(),
@@ -27,7 +32,7 @@ class AutoEncoder(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 128),
             nn.ReLU(),
-            nn.Linear(128, 28 * 28),
+            nn.Linear(128, image_dim),
             nn.Sigmoid(),
         )
 
