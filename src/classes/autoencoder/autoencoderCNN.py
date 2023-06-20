@@ -4,10 +4,10 @@ import torch.nn.functional as F
 
 
 class AutoEncoderCNN(nn.Module):
-    def __init__(self, dataset="MNIST", drop_prob=0.5):
+    def __init__(self, datasettype="MNIST", drop_prob=0.5):
         super().__init__()
 
-        self.dataset = dataset
+        self.dataset = datasettype
         if self.dataset == "MNIST":
             img_channels = 1
             img_size = 28
