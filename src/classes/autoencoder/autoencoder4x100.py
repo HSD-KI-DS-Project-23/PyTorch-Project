@@ -5,6 +5,9 @@ class AutoEncoder4x100(nn.Module):
     def __init__(self, datasettype):
         super().__init__()
 
+        # represents the dimensionality of the encoded (compressed) representation of the input data
+        self.reduction_dim = 128 
+
         if datasettype == "MNIST":
             self.image_dim = 1 * 28 * 28
             self.output_shape = (1, 28, 28)
@@ -21,12 +24,12 @@ class AutoEncoder4x100(nn.Module):
             nn.ReLU(),
             nn.Linear(100, 100),
             nn.ReLU(),
-            nn.Linear(100, 100),
+            nn.Linear(100, self.reduction_dim),
             nn.Sigmoid(),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(100, 100),
+            nn.Linear(self.reduction_dim, 100),
             nn.ReLU(),
             nn.Linear(100, 100),
             nn.ReLU(),
