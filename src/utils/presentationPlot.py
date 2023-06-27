@@ -17,7 +17,7 @@ def presentation_plot(image, encoded):
     # Plot the decoded tensor
     axs[1].imshow(encoded.squeeze(), cmap="gray")
     axs[1].axis("off")
-    axs[1].set_title("Decoded Tensor")
+    axs[1].set_title("Encoded Tensor")
 
     # Plot the predicted label
     # axs[2].bar(range(10), label.squeeze())
