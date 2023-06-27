@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 
-def presentation_plot(image, encoded):
+def presentation_plot(image, encoded, label):
     """Function which plots a MNIST picture, its encoded variant and the predicted label"""
 
-    fig, axs = plt.subplots(1, 2)
+    fig, axs = plt.subplots(1, 3)
 
     image = image.detach().numpy()
     encoded = encoded.detach().numpy()
+    label = label.detach().numpy()
 
     # Plot the MNIST picture
     axs[0].imshow(image.squeeze(), cmap="gray")
@@ -20,10 +22,11 @@ def presentation_plot(image, encoded):
     axs[1].set_title("Encoded Tensor")
 
     # Plot the predicted label
-    # axs[2].bar(range(10), label.squeeze())
-    # axs[2].set_title("Predicted Label")
-    # axs[2].set_xlabel("Digit")
-    # axs[2].set_ylabel("Probability")
+    axs[2].bar(range(10), label.squeeze())
+    axs[2].set_xticks(np.arange(10))
+    axs[2].set_title("Predicted Label")
+    axs[2].set_xlabel("Digit")
+    axs[2].set_ylabel("Probability")
 
     plt.tight_layout()
     plt.show()
