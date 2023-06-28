@@ -1,9 +1,15 @@
+# Author: Leon Kleinschmidt
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class AutoEncoderCNN(nn.Module):
+    """Die Klasse beschreibt einen Autoencoder welcher zur Datenencodierung und Datendecodierung CNNs nutzt. Die Reduktionsgröße beträgt dabei (8,4,4) also 128
+    Als Übergabewert benötigt diese Klasse den Datensatztypen, dieser kann entweder "MNIST" oder "CIFAR10" sein
+    """
+
     def __init__(self, datasettype="MNIST", drop_prob=0.5):
         super().__init__()
 

@@ -1,7 +1,13 @@
+# Author: Leon Kleinschmidt
+
 import torch.nn as nn
 
 
 class AutoEncoder(nn.Module):
+    """Die Klasse beschreibt einen simplen Autoencoder welcher die Daten auf eine Größe von 9 reduziert.
+    Als Übergabewert benötigt diese Klasse den Datensatztypen, dieser kann entweder "MNIST" oder "CIFAR10" sein
+    """
+
     def __init__(self, datasettype):
         super().__init__()
 
