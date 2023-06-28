@@ -1,3 +1,5 @@
+# Author: Max Horster
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -6,6 +8,10 @@ from torchvision import transforms, datasets
 
 
 class MNIST_Classification_Class(nn.Module):
+    """Die Klasse beschreibt ein Klassifizierungsnetzwerk. Dabei kann beim Initialisieren die input_size festgelegt werden, so können durch einen Autoencoder reduzierte Bilder, aber auch vollkommende Bilder klassifiziert werden.
+    Die Größe der Hidden Layers ist konfigurierbar.
+    """
+
     def __init__(self, input_size, hidden_dim):
         super(MNIST_Classification_Class, self).__init__()
         # self.input = nn.Linear(28 * 28, 20)  # input
