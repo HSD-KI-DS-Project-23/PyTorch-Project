@@ -1,9 +1,11 @@
+# Author: Leon Kleinschmidt
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 def presentation_plot(image, encoded, decoded, label):
-    """Function which plots a MNIST picture, its encoded variant and the predicted label"""
+    """Function which plots a MNIST picture, its encoded variant, its decoded variant and the predicted label"""
 
     fig, axs = plt.subplots(1, 4)
 

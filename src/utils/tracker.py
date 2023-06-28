@@ -1,9 +1,13 @@
+# Author: Leon Kleinschmidt
+
 import os
 import json
 import matplotlib.pyplot as plt
 
 
 class Tracker:
+    """Eine Klasse, welche die Daten des Trainings abspeichert. Erlaubt so die Rekonstruktion des vollständigen Trainings, z.B. Loss-Plot auch wenn Training zwischenzeitig beendet wurde bzw. Jupyterkernel neugestartet wurde."""
+
     def __init__(self):
         self.y_loss = {}
         self.y_loss["train"] = []

@@ -1,10 +1,11 @@
+# Author: Leon Kleinschmidt
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 def view_reconstructed(image, reconstructed):
-    """Function for displaying an image (as a PyTorch Tensor) and its
-    reconstruction (also a PyTorch Tensor)"""
+    """Plots the input image, which is inputted into an autoencoder and its reconstruction. Pictures must be either of "MNIST" or "CIFAR10" size"""
 
     if image.shape[1] == 1:
         # MNIST tensor (grayscale image)
