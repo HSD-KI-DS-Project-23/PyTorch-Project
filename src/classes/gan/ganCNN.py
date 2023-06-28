@@ -1,5 +1,7 @@
 import torch.nn as nn
 
+# non functional
+
 
 class GeneratorCNN(nn.Module):
     def __init__(self, latent_dim, img_channels, img_size):
