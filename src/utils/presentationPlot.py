@@ -37,4 +37,6 @@ def presentation_plot(image, encoded, decoded, label):
     axs[3].set_ylabel("Probability")
 
     plt.tight_layout()
+    # Save the figure as svg
+    # plt.savefig("figure.svg", format="svg")
     plt.show()
